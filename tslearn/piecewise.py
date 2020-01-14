@@ -6,9 +6,10 @@ approximation algorithms.
 import numpy
 from scipy.stats import norm
 from sklearn.base import TransformerMixin
+from sklearn.linear_model import LinearRegression
 
 from tslearn.utils import to_time_series_dataset
-from tslearn.cysax import (cydist_sax, cyslopes, cydist_1d_sax,
+from tslearn.cysax import (cydist_sax, cydist_1d_sax,
                            inv_transform_1d_sax, inv_transform_sax,
                            inv_transform_paa)
 
@@ -58,6 +59,18 @@ def _bin_medians(n_bins, scale=1.):
     """
     return norm.ppf([float(a) / (2 * n_bins) for a in range(1, 2 * n_bins, 2)],
                     scale=scale)
+
+
+def _cyslopes(dataset, t0):
+    """TODO: docstring for this function"""
+    sz = dataset.shape[1]
+    dataset_out = numpy.empty((dataset.shape[0], dataset.shape[2]))
+    vec_t = numpy.arange(t0, t0 + sz).reshape((-1, 1))
+
+    for i in range(dataset.shape[0]):
+        for d in range(dataset.shape[2]):
+            dataset_out[i, d] = LinearRegression().fit(vec_t, dataset[i, :, d].reshape((-1, 1))).coef_[0]
+    return dataset_out
 
 
 class PiecewiseAggregateApproximation(TransformerMixin):
@@ -579,7 +592,7 @@ class OneD_SymbolicAggregateApproximation(SymbolicAggregateApproximation):
         for i_seg in range(self.n_segments):
             start = i_seg * sz_segment
             end = start + sz_segment
-            X_slopes[:, i_seg, :] = cyslopes(X[:, start:end, :], start)
+            X_slopes[:, i_seg, :] = _cyslopes(X[:, start:end, :], start)
         return X_slopes
 
     def _transform(self, X, y=None):
